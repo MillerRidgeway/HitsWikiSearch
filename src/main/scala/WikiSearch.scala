@@ -1,7 +1,4 @@
 import org.apache.spark.sql.SparkSession
-
-
-case class Title(id: Int, name: String)
 object WikiSearch {
   def main(args: Array[String]) {
     //Files
@@ -11,12 +8,19 @@ object WikiSearch {
     //Spark Session
     val spark = SparkSession.builder.appName("WikiSearch").getOrCreate()
 
+    //Read in files as dataframes
     val titlesDf = spark.read.textFile(titlesFile).rdd.zipWithIndex()
     val linksDf = spark.read.textFile(linksFile)
 
-    println(titlesDf.first())
-    println(linksDf.first())
-    
+    //titlesDf.take(10).foreach(println)
+    //linksDf.take(10).foreach(println)
+
+    //Root set generation
+    val query = "Colorado_State_University"
+    val rootSet = titlesDf.filter(s => s._1.contains(query))
+
+    rootSet.take(10).foreach(println)
+
     spark.stop()
   }
 }

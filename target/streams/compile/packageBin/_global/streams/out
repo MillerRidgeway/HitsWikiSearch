@@ -1,17 +1,17 @@
-[0m[[0m[0mdebug[0m] [0m[0mPackaging /s/chopin/b/grad/millerr/Projects/BigData/HitsWikiSearch/target/scala-2.13/hitswikisearch_2.13-0.1.jar ...[0m
+[0m[[0m[0mdebug[0m] [0m[0mPackaging /s/chopin/b/grad/millerr/Projects/BigData/HitsWikiSearch/target/scala-2.11/hitswikisearch_2.11-0.1.jar ...[0m
 [0m[[0m[0mdebug[0m] [0m[0mInput file mappings:[0m
 [0m[[0m[0mdebug[0m] [0m[0m	[0m
-[0m[[0m[0mdebug[0m] [0m[0m	  /s/chopin/b/grad/millerr/Projects/BigData/HitsWikiSearch/target/scala-2.13/classes[0m
-[0m[[0m[0mdebug[0m] [0m[0m	Title.class[0m
-[0m[[0m[0mdebug[0m] [0m[0m	  /s/chopin/b/grad/millerr/Projects/BigData/HitsWikiSearch/target/scala-2.13/classes/Title.class[0m
+[0m[[0m[0mdebug[0m] [0m[0m	  /s/chopin/b/grad/millerr/Projects/BigData/HitsWikiSearch/target/scala-2.11/classes[0m
 [0m[[0m[0mdebug[0m] [0m[0m	SimpleApp$.class[0m
-[0m[[0m[0mdebug[0m] [0m[0m	  /s/chopin/b/grad/millerr/Projects/BigData/HitsWikiSearch/target/scala-2.13/classes/SimpleApp$.class[0m
+[0m[[0m[0mdebug[0m] [0m[0m	  /s/chopin/b/grad/millerr/Projects/BigData/HitsWikiSearch/target/scala-2.11/classes/SimpleApp$.class[0m
+[0m[[0m[0mdebug[0m] [0m[0m	WikiSearch$$anonfun$main$1.class[0m
+[0m[[0m[0mdebug[0m] [0m[0m	  /s/chopin/b/grad/millerr/Projects/BigData/HitsWikiSearch/target/scala-2.11/classes/WikiSearch$$anonfun$main$1.class[0m
+[0m[[0m[0mdebug[0m] [0m[0m	WikiSearch$$anonfun$1.class[0m
+[0m[[0m[0mdebug[0m] [0m[0m	  /s/chopin/b/grad/millerr/Projects/BigData/HitsWikiSearch/target/scala-2.11/classes/WikiSearch$$anonfun$1.class[0m
 [0m[[0m[0mdebug[0m] [0m[0m	SimpleApp.class[0m
-[0m[[0m[0mdebug[0m] [0m[0m	  /s/chopin/b/grad/millerr/Projects/BigData/HitsWikiSearch/target/scala-2.13/classes/SimpleApp.class[0m
+[0m[[0m[0mdebug[0m] [0m[0m	  /s/chopin/b/grad/millerr/Projects/BigData/HitsWikiSearch/target/scala-2.11/classes/SimpleApp.class[0m
 [0m[[0m[0mdebug[0m] [0m[0m	WikiSearch.class[0m
-[0m[[0m[0mdebug[0m] [0m[0m	  /s/chopin/b/grad/millerr/Projects/BigData/HitsWikiSearch/target/scala-2.13/classes/WikiSearch.class[0m
+[0m[[0m[0mdebug[0m] [0m[0m	  /s/chopin/b/grad/millerr/Projects/BigData/HitsWikiSearch/target/scala-2.11/classes/WikiSearch.class[0m
 [0m[[0m[0mdebug[0m] [0m[0m	WikiSearch$.class[0m
-[0m[[0m[0mdebug[0m] [0m[0m	  /s/chopin/b/grad/millerr/Projects/BigData/HitsWikiSearch/target/scala-2.13/classes/WikiSearch$.class[0m
-[0m[[0m[0mdebug[0m] [0m[0m	Title$.class[0m
-[0m[[0m[0mdebug[0m] [0m[0m	  /s/chopin/b/grad/millerr/Projects/BigData/HitsWikiSearch/target/scala-2.13/classes/Title$.class[0m
+[0m[[0m[0mdebug[0m] [0m[0m	  /s/chopin/b/grad/millerr/Projects/BigData/HitsWikiSearch/target/scala-2.11/classes/WikiSearch$.class[0m
 [0m[[0m[0mdebug[0m] [0m[0mDone packaging.[0m
