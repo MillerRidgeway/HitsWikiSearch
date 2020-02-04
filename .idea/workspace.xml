@@ -2,7 +2,6 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="c7001916-f8a4-4fde-8f28-c8d34ecab4cb" name="Default Changelist" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/modules/HitsWikiSearch.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/modules/HitsWikiSearch.iml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/scala/WikiSearch.scala" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/scala/WikiSearch.scala" afterDir="false" />
     </list>
@@ -122,6 +121,7 @@
       <workItem from="1580688113501" duration="2018000" />
       <workItem from="1580695329954" duration="1542000" />
       <workItem from="1580767189283" duration="3166000" />
+      <workItem from="1580847401441" duration="1914000" />
     </task>
     <servers />
   </component>
