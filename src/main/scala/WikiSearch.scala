@@ -22,11 +22,12 @@ object WikiSearch {
     //Root set generation (dataframe)
     val rootSet = titlesRdd.filter(s => s._1.contains(query)).map(x => x._2).toDF("id")
     rootSet.show(10)
-    println(rootSet.count())
+    //println(rootSet.count())
 
     //Base set generation
-    val queryLinks = rootSet.join(linksDf, $"id" === $"from" || linksDf("to").contains($"id"))
+    val queryLinks = rootSet.join(linksDf, $"id" === $"from" || linksDf("to").contains($"id")).drop("id")
     queryLinks.show(10)
+    //println(queryLinks.count())
 
     //val toColStrings = queryLinks.select("to").collect.map(row => row.getString(0))
     //toColStrings.map(line => line.split(" ").collect
