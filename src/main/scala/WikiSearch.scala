@@ -4,7 +4,6 @@ object WikiSearch {
   //Spark Session
   val spark = SparkSession.builder.appName("WikiSearch").getOrCreate()
   import spark.implicits._
-  import spark.sparkContext._
 
   def main(args: Array[String]) {
     //File locations
@@ -12,7 +11,7 @@ object WikiSearch {
     val linksFile = "hdfs://richmond:32251/user/millerr/links-simple-sorted.txt"
 
     //Search string
-    val query = "eclipse"
+    val query = "Colorado_State_University"
 
     //Read in files - links as dataframe, titles as RDD (later converted)
     val titlesRdd = spark.read.textFile(titlesFile).rdd.zipWithIndex()
@@ -26,13 +25,11 @@ object WikiSearch {
     println(rootSet.count())
 
     //Base set generation
-    val queryLinks = rootSet.join(linksDf, $"id" === $"from")
+    val queryLinks = rootSet.join(linksDf, $"id" === $"from" || linksDf("to").contains($"id"))
     queryLinks.show(10)
 
-    val baseSet = queryLinks.select("to")
-    baseSet.show(10)
-
-
+    //val toColStrings = queryLinks.select("to").collect.map(row => row.getString(0))
+    //toColStrings.map(line => line.split(" ").collect
     spark.stop()
   }
 }
