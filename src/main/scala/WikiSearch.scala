@@ -1,4 +1,5 @@
 import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.functions.lit
 
 object WikiSearch {
   //Spark Session
@@ -22,15 +23,21 @@ object WikiSearch {
     //Root set generation (dataframe)
     val rootSet = titlesRdd.filter(s => s._1.contains(query)).map(x => x._2).toDF("id")
     rootSet.show(10)
-    //println(rootSet.count())
 
     //Base set generation
-    val queryLinks = rootSet.join(linksDf, $"id" === $"from" || linksDf("to").contains($"id")).drop("id")
-    queryLinks.show(10)
-    //println(queryLinks.count())
+    val baseSet = rootSet.join(linksDf, $"id" === $"from" || linksDf("to").contains($"id"))
+      .drop("id")
+      .withColumn("AuthScore", lit(1))
+      .withColumn("HubScore", lit(1))
+    baseSet.show(10)
+    baseSet.persist()
 
-    //val toColStrings = queryLinks.select("to").collect.map(row => row.getString(0))
-    //toColStrings.map(line => line.split(" ").collect
+
+    //Iterate and calculate Hub/Authority Score
+    baseSet.map(row => row.getAs[String](2).split(" ")
+      .map(id => baseSet.filter(baseSet("from") === id)("HubScore")) )
+
+
     spark.stop()
   }
 }
