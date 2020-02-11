@@ -1,5 +1,6 @@
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.lit
+import org.apache.spark.SparkContext._
 
 object WikiSearch {
   //Spark Session
@@ -12,7 +13,7 @@ object WikiSearch {
     val linksFile = "hdfs://richmond:32251/user/millerr/links-simple-sorted.txt"
 
     //Search string
-    val query = "Colorado_State_University"
+    val query = "Rocky_Mountain_National_Park"
 
     //Read in files - links as dataframe, titles as RDD (later converted)
     val titlesRdd = spark.read.textFile(titlesFile).rdd.zipWithIndex()
@@ -26,16 +27,16 @@ object WikiSearch {
 
     //Base set generation
     val baseSet = rootSet.join(linksDf, $"id" === $"from" || linksDf("to").contains($"id"))
-      .drop("id")
       .withColumn("AuthScore", lit(1))
       .withColumn("HubScore", lit(1))
+      .withColumnRenamed("id","root_set_id")
     baseSet.show(10)
     baseSet.persist()
 
 
     //Iterate and calculate Hub/Authority Score
-    baseSet.map(row => row.getAs[String](2).split(" ")
-      .map(id => baseSet.filter(baseSet("from") === id)("HubScore")) )
+    val hubs = baseSet.map(row => (if(row.get(0) != row.get(1)) (row.get(0),row.get(3)) else (row.get(0),0))).reduceByKey(_ + _)
+    hubs.show(10) 
 
 
     spark.stop()
