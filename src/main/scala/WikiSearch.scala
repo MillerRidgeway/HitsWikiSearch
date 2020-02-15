@@ -1,6 +1,8 @@
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.lit
+import org.apache.spark.sql.types
 import org.apache.spark.SparkContext._
+import org.apache.spark.sql
 
 object WikiSearch {
   //Spark Session
@@ -24,21 +26,29 @@ object WikiSearch {
     //Root set generation (dataframe)
     val rootSet = titlesRdd.filter(s => s._1.contains(query)).map(x => x._2).toDF("id")
     rootSet.show(10)
+    rootSet.persist()
 
     //Base set generation
     val baseSet = rootSet.join(linksDf, $"id" === $"from" || linksDf("to").contains($"id"))
-      .withColumn("AuthScore", lit(1))
-      .withColumn("HubScore", lit(1))
+      .withColumn("AuthScore", lit(1.0))
+      .withColumn("HubScore", lit(1.0))
       .withColumnRenamed("id","root_set_id")
+      .withColumn("from", $"from".cast(sql.types.LongType))
+      .withColumn("AuthScore", $"AuthScore".cast(sql.types.LongType))
+      .withColumn("HubScore", $"HubScore".cast(sql.types.LongType))
     baseSet.show(10)
+    baseSet.printSchema()
     baseSet.persist()
 
-
     //Iterate and calculate Hub/Authority Score
-    val hubs = baseSet.map(row => (if(row.get(0) != row.get(1)) (row.get(0),row.get(3)) else (row.get(0),0))).reduceByKey(_ + _)
-    hubs.show(10) 
+    val longZero:Long = 0
+    val hubs = baseSet.rdd.map(row => if(row.getAs[Long](0) != row.getAs[Long](1))
+      (row.getAs[Long](1),row.getAs[Long](3)) else (row.getAs[Long](0),longZero))
+      .reduceByKey((a,b) => a + b)
+    hubs.take(10).foreach((println))
 
 
     spark.stop()
   }
+
 }
