@@ -38,23 +38,33 @@ object WikiSearch {
 
     //Iterate and calculate Hub/Authority Score
 
-    //Calculate hubs score in new DF, normalize, then join back with base
-    val auths = baseSet.rdd.map(row => if(row.getAs[Long](0) != row.getAs[Long](1))
-      (row.getAs[Long](1),row.getAs[Long](3)) else (row.getAs[Long](0),0L))
+    //Grab authority scores using the 'to' column
+    val auths = baseSet.rdd.flatMap(row =>
+      row.getAs[String]("to").split(" ").map(item =>
+        (item,row.getAs[Long]("HubScore"))))
       .reduceByKey((a,b) => a + b)
       .toDF("from","AuthScore")
-    auths.show(10)
     auths.persist()
 
+    //Normalize the auth scores
     val authsSum = auths.select("AuthScore").rdd.map(row => row.getAs[Long]("AuthScore")).reduce(_+_)
     val normalizedAuths = auths.withColumn("AuthScore", $"AuthScore"/authsSum)
+    normalizedAuths.show(10)
+    normalizedAuths.persist()
 
-    baseSet = baseSet.join(normalizedAuths, Seq("from"), "left")
+    //Join back into the base set
+    baseSet = baseSet.drop("AuthScore").join(normalizedAuths, Seq("from"))
     baseSet.show(10)
 
-    baseSet.sort($"AuthScore".desc).limit(10).show()
-
-
+//    val hubs = baseSet.rdd.flatMap(row =>
+//      row.getAs[String]("to").split(" ").map(item =>
+//        (row.getAs[Long]("from"),
+//          normalizedAuths.filter(x => x.getAs[Long]("from") == item.toLong).select("AuthScore")
+//            .take(1)(0).getAs[Long]("AuthScore"))))
+//        .reduceByKey((a,b) => a + b)
+//        .toDF("from", "HubScore")
+//    hubs.show(10)
+    //baseSet.sort($"AuthScore".desc).limit(10).show()
 
     spark.stop()
   }
