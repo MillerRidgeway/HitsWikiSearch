@@ -28,22 +28,19 @@ object WikiSearch {
 
     //Base set generation
     var baseSet = rootSet.join(linksDf, $"id" === $"from" || linksDf("to").contains($"id"))
-      .withColumn("AuthScore", lit(1.0))
-      .withColumn("HubScore", lit(1.0))
+      .withColumn("AuthScore", lit(1L))
+      .withColumn("HubScore", lit(1L))
       .withColumnRenamed("id","root_set_id")
       .withColumn("from", $"from".cast(sql.types.LongType))
-      .withColumn("AuthScore", $"AuthScore".cast(sql.types.LongType))
-      .withColumn("HubScore", $"HubScore".cast(sql.types.LongType))
     baseSet.show(10)
-    //baseSet.printSchema()
+    baseSet.printSchema()
     baseSet.persist()
 
     //Iterate and calculate Hub/Authority Score
 
     //Calculate hubs score in new DF, normalize, then join back with base
-    val longZero:Long = 0
     val auths = baseSet.rdd.map(row => if(row.getAs[Long](0) != row.getAs[Long](1))
-      (row.getAs[Long](1),row.getAs[Long](3)) else (row.getAs[Long](0),longZero))
+      (row.getAs[Long](1),row.getAs[Long](3)) else (row.getAs[Long](0),0L))
       .reduceByKey((a,b) => a + b)
       .toDF("from","AuthScore")
     auths.show(10)
@@ -52,7 +49,7 @@ object WikiSearch {
     val authsSum = auths.select("AuthScore").rdd.map(row => row.getAs[Long]("AuthScore")).reduce(_+_)
     val normalizedAuths = auths.withColumn("AuthScore", $"AuthScore"/authsSum)
 
-    baseSet = baseSet.drop($"AuthScore").join(normalizedAuths, Seq("from"), "left")
+    baseSet = baseSet.join(normalizedAuths, Seq("from"), "left")
     baseSet.show(10)
 
     baseSet.sort($"AuthScore".desc).limit(10).show()
