@@ -67,6 +67,7 @@ object WikiSearch {
         .map(row => (row.getAs[Double](0),row.getAs[Double](1)))
         .reduceByKey((a,b) => a + b)
         .toDF("from", "AuthScore")
+      auths.show(10)
       auths.persist()
 
       //Normalize the auth scores
@@ -90,43 +91,43 @@ object WikiSearch {
       hubs.printSchema()
       hubs.show(10)
 
-      //Normalize the hub scores
-      var hubsSum = hubs.select("HubScore").rdd.map(row => row.getAs[Double]("HubScore")).reduce(_ + _)
-      var normalizedHubs = hubs.withColumn("HubScore", $"HubScore" / hubsSum)
-      //normalizedHubs.show(10)
-      normalizedHubs.persist()
-
-      //Join back into base set
-      hubsSet = hubsSet.drop("HubScore").join(normalizedHubs, Seq("source"))
-      //baseSet.show(10)
+//      //Normalize the hub scores
+//      var hubsSum = hubs.select("HubScore").rdd.map(row => row.getAs[Double]("HubScore")).reduce(_ + _)
+//      var normalizedHubs = hubs.withColumn("HubScore", $"HubScore" / hubsSum)
+//      //normalizedHubs.show(10)
+//      normalizedHubs.persist()
+//
+//      //Join back into base set
+//      hubsSet = hubsSet.drop("HubScore").join(normalizedHubs, Seq("source"))
+//      //baseSet.show(10)
     }
-    hubsSet = hubsSet
-      .withColumnRenamed("source", "from")
-      .withColumnRenamed("HubScore", "HubScoreFinal")
-    
-    baseSet = baseSet.join(hubsSet, Seq("from"))
-    baseSet = baseSet.join(authsSet, Seq("from"))
-
-    val authsSorted = baseSet.join(titlesIndex, $"from" === $"id")
-      .drop("to")
-      .drop("id")
-      .drop("dest")
-      .drop("HubScore")
-      .sort($"AuthScore".desc)
-      .limit(50)
-      .rdd
-
-    val hubsSorted = baseSet.join(titlesIndex, $"from" === $"id")
-      .drop("to")
-      .drop("id")
-      .drop("dest")
-      .drop("HubScore")
-      .sort($"HubScoreFinal".desc)
-      .limit(50)
-      .rdd
-
-    authsSorted.saveAsTextFile("hdfs://richmond:32251/user/millerr/rmnp_2_auth.txt")
-    hubsSorted.saveAsTextFile("hdfs://richmond:32251/user/millerr/rmnp_2_hub.txt")
+//    hubsSet = hubsSet
+//      .withColumnRenamed("source", "from")
+//      .withColumnRenamed("HubScore", "HubScoreFinal")
+//
+//    baseSet = baseSet.join(hubsSet, Seq("from"))
+//    baseSet = baseSet.join(authsSet, Seq("from"))
+//
+//    val authsSorted = baseSet.join(titlesIndex, $"from" === $"id")
+//      .drop("to")
+//      .drop("id")
+//      .drop("dest")
+//      .drop("HubScore")
+//      .sort($"AuthScore".desc)
+//      .limit(50)
+//      .rdd
+//
+//    val hubsSorted = baseSet.join(titlesIndex, $"from" === $"id")
+//      .drop("to")
+//      .drop("id")
+//      .drop("dest")
+//      .drop("HubScore")
+//      .sort($"HubScoreFinal".desc)
+//      .limit(50)
+//      .rdd
+//
+//    authsSorted.saveAsTextFile("hdfs://richmond:32251/user/millerr/rmnp_2_auth.txt")
+//    hubsSorted.saveAsTextFile("hdfs://richmond:32251/user/millerr/rmnp_2_hub.txt")
 
     spark.stop()
   }
