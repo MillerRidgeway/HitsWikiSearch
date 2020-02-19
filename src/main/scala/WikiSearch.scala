@@ -47,52 +47,60 @@ object WikiSearch{
       .persist()
     iterSet.take(30).foreach(println)
 
+    //Base set with titles, used for later join
     var baseSet = sourceToDest
       .map{case(k,v) => (v,k)}
       .union(destToSource)
       .groupByKey()
       .join(titles)
       .map{case(k,(v1,v2)) => (k,v2)}
-    baseSet.take(30).foreach(println)
-
-    baseSet = baseSet
       .union(rootSet)
       .distinct()
       .sortByKey()
       .persist()
+    baseSet.take(30).foreach(println)
 
     //Hubs/Auths
     var authsSet = baseSet.map{case(k,v) => (k, 1D)}
     var hubsSet = baseSet.map{case(k,v) => (k, 1D)}
 
     for(i <- 1 to 50){
+      //Calc auth score from hub score discarding nulls (emit 0)
       authsSet = iterSet.join(hubsSet)
         .map{case(k,(v1,v2)) => (v1,v2)}
         .reduceByKey((x, y) => x+y)
         .rightOuterJoin(hubsSet)
-        .map{case(k,(Some(v1),v2)) => (k, v1);case(k,(None,v2)) => (k,0)}
+        .map{case(k,(Some(v1),v2)) => (k, v1);
+             case(k,(None,v2)) => (k,0)}
+
+      //Normalize auths
       var normalizeAuths = authsSet.map(p => p._2).sum()
-      authsSet = authsSet.map{case(k,v) => (k, v/normalizeAuths)}
+      authsSet = authsSet
+        .map{case(k,v) => (k, v/normalizeAuths)}
         .persist()
 
+      //Flip keys to calculate hub from auth score discarding nulls (emit 0)
       hubsSet = iterSet
         .map{case(k,v) => (v,k)}
         .join(authsSet)
         .map{case(k,(v1,v2)) => (v1,v2)}
         .reduceByKey((x, y) => x+y)
         .rightOuterJoin(authsSet)
-        .map{case(k,(Some(v1),v2)) => (k, v1);case(k,(None,v2)) => (k,0)}
+        .map{case(k,(Some(v1),v2)) => (k, v1);
+             case(k,(None,v2)) => (k,0)}
+
+      //Normalize hubs
       var normalizeHubs = hubsSet.map(p => p._2).sum()
       hubsSet = hubsSet
         .map{case(k,v) => (k, v/normalizeHubs)}
-          .persist()
+        .persist()
     }
 
 
     var authsFinal = authsSet.join(baseSet).map{case(k,(v1,v2)) => (v1,v2)}.sortByKey(false)
-    authsFinal.saveAsTextFile("hdfs://richmond:32251/user/millerr/testing_eclipse_auths_6.txt")
+    authsFinal.saveAsTextFile("hdfs://richmond:32251/user/millerr/testing_eclipse_auths_7.txt")
     var hubsFinal = hubsSet.join(baseSet).map{case(k,(v1,v2)) => (v1,v2)}.sortByKey(false)
-    hubsFinal.saveAsTextFile("hdfs://richmond:32251/user/millerr/testing_eclipse_hubs_6.txt")
+    hubsFinal.saveAsTextFile("hdfs://richmond:32251/user/millerr/testing_eclipse_hubs_7.txt")
 
   }
 }
