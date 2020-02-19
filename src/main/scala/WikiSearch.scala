@@ -1,96 +1,98 @@
-import org.apache.spark.sql.{DataFrame, SparkSession}
-import org.apache.spark.sql.functions.{lit,udf}
-import org.apache.spark.sql
+import org.apache.spark.SparkConf
+import org.apache.spark.SparkContext
+import org.apache.spark.sql.SparkSession
 
-object WikiSearch {
-  //Spark Session
-  val spark = SparkSession.builder.appName("WikiSearch").getOrCreate()
-  import spark.implicits._
-
+object WikiSearch{
   def main(args: Array[String]) {
-    //File locations
-    val titlesFile = "hdfs://richmond:32251/user/millerr/titles-sorted.txt"
-    val linksFile = "hdfs://richmond:32251/user/millerr/links-simple-sorted.txt"
+    //Spark Session
+    val sc = SparkSession.builder.appName("WikiSearch").getOrCreate().sparkContext
 
     //Search string
-    val query = args(0) //"Rocky_Mountain_National_Park"
+    val query = args(0)
 
-    //Read in files - links as dataframe, titles as RDD and DF
-    val titlesRdd = spark.read.textFile(titlesFile).rdd.zipWithIndex()
-    val titlesIndex = titlesRdd.toDF("name","id")
-    val linksDf = spark.read.option("delimiter", ":").csv(linksFile).toDF("from", "to")
+    //Files
+    val titlesFile = sc.textFile("hdfs://richmond:32251/user/millerr/titles-sorted.txt")
+    val linksFile = sc.textFile("hdfs://richmond:32251/user/millerr/links-simple-sorted.txt")
 
-    //Root set generation (dataframe)
-    val rootSet = titlesRdd.filter(s => s._1.contains(query)).map(x => x._2).toDF("id")
+    //Read in titles, zip with line number and filter by query
+    val titles = titlesFile.zipWithIndex().map{case(k, v) => (v + 1, k)}
+    val rootSet = titles.filter{case(k, v) => v.contains(query)}
 
-    //Base set generation
-    var baseSet = rootSet.join(linksDf, $"id" === $"from" || linksDf("to").contains($"id"))
-      .withColumn("AuthScore", lit(1D))
-      .withColumn("HubScore", lit(1D))
-      .withColumn("from", $"from".cast(sql.types.DoubleType))
-      .drop("id")
+    //Build graph set of all (from, to)
+    val graphSet = linksFile
+      .filter(s => !s.endsWith(": "))
+      .map(s => (s.split(':')(0).toLong, s.split(':')(1).trim.split(' ')))
+      .flatMapValues(x => x)
+      .map{case(k,v) => (k, v.toLong)}
+    graphSet.take(30).foreach(println)
+
+    //Flip (from, to) to (to, from) and filter by root
+    val destToSource = graphSet
+      .map{case(k,v) => (v,k)}
+      .join(rootSet)
+      .map{case(k,(v1,v2)) => (v1,k)}
+    destToSource.take(30).foreach(println)
+
+    //Keep (from,to) and filter by root
+    val sourceToDest = graphSet
+      .join(rootSet)
+      .map{case(k,(v1,v2)) => (k,v1)}
+    sourceToDest.take(30).foreach(println)
+
+    //Combine to form 'base set' without titles
+    var iterSet = sourceToDest
+      .union(destToSource)
       .distinct()
-    baseSet.persist()
+      .sortByKey()
+      .persist()
+    iterSet.take(30).foreach(println)
 
-    //relationship for the 3 pair
-    val hubsSet = baseSet.rdd.flatMap(row => row.getAs[String]("to").split(" ")
-      .map(item => (item, row.getAs[Double]("from"))))
-      .toDF("dest", "source")
+    var baseSet = sourceToDest
+      .map{case(k,v) => (v,k)}
+      .union(destToSource)
+      .groupByKey()
+      .join(titles)
+      .map{case(k,(v1,v2)) => (k,v2)}
+    baseSet.take(30).foreach(println)
 
-    //Iterate and calculate Hub/Authority Score
-    for(i <- 1 to 10) {
-      //Calc auth scores using 'to' column
-      var auths = baseSet.rdd.flatMap(row =>
-        row.getAs[String]("to").split(" ").map(item =>
-          (item, row.getAs[Double]("HubScore"))))
-        .reduceByKey((a, b) => a + b)
-        .toDF("from", "AuthScore")
+    baseSet = baseSet
+      .union(rootSet)
+      .distinct()
+      .sortByKey()
+      .persist()
 
-      //Normalize the auth scores
-      var authsSum = auths.select("AuthScore").rdd.map(row => row.getAs[Double]("AuthScore")).reduce(_ + _)
-      var normalizedAuths = auths.withColumn("AuthScore", $"AuthScore" / authsSum)
-      normalizedAuths.persist()
+    //Hubs/Auths
+    var authsSet = baseSet.map{case(k,v) => (k, 1D)}
+    var hubsSet = baseSet.map{case(k,v) => (k, 1D)}
 
-      //Join back into the base set
-      baseSet = baseSet.drop("AuthScore").join(normalizedAuths, Seq("from"))
+    for(i <- 1 to 50){
+      authsSet = iterSet.join(hubsSet)
+        .map{case(k,(v1,v2)) => (v1,v2)}
+        .reduceByKey((x, y) => x+y)
+        .rightOuterJoin(hubsSet)
+        .map{case(k,(Some(v1),v2)) => (k, v1);case(k,(None,v2)) => (k,0)}
+      var normalizeAuths = authsSet.map(p => p._2).sum()
+      authsSet = authsSet.map{case(k,v) => (k, v/normalizeAuths)}
+        .persist()
 
-      //Calc hub scores via 3 tuple 'to' manipulation
-      var hubs = hubsSet.join(normalizedAuths, $"from" === $"dest")
-        .drop("from")
-        .drop("dest")
-        .rdd
-        .map(row => (row.getAs[Double](0), row.getAs[Double](0)))
-        .reduceByKey((a, b) => a + b)
-        .toDF("source", "HubScore")
-
-      //Normalize the hub scores
-      var hubsSum = hubs.select("HubScore").rdd.map(row => row.getAs[Double]("HubScore")).reduce(_ + _)
-      var normalizedHubs = hubs.withColumn("HubScore", $"HubScore" / hubsSum)
-      normalizedHubs.persist()
-
-      //Join back into base set
-      baseSet = baseSet.drop("HubScore")
-        .join(normalizedHubs, $"from" === $"source")
-        .drop("source")
+      hubsSet = iterSet
+        .map{case(k,v) => (v,k)}
+        .join(authsSet)
+        .map{case(k,(v1,v2)) => (v1,v2)}
+        .reduceByKey((x, y) => x+y)
+        .rightOuterJoin(authsSet)
+        .map{case(k,(Some(v1),v2)) => (k, v1);case(k,(None,v2)) => (k,0)}
+      var normalizeHubs = hubsSet.map(p => p._2).sum()
+      hubsSet = hubsSet
+        .map{case(k,v) => (k, v/normalizeHubs)}
+          .persist()
     }
 
 
-    val authsSortedDf = baseSet.join(titlesIndex, $"from" === $"id")
-      .drop("to")
-      .drop("id")
-      .sort($"AuthScore".desc)
-      .limit(50)
+    var authsFinal = authsSet.join(baseSet).map{case(k,(v1,v2)) => (v1,v2)}.sortByKey(false)
+    authsFinal.saveAsTextFile("hdfs://richmond:32251/user/millerr/testing_eclipse_auths_6.txt")
+    var hubsFinal = hubsSet.join(baseSet).map{case(k,(v1,v2)) => (v1,v2)}.sortByKey(false)
+    hubsFinal.saveAsTextFile("hdfs://richmond:32251/user/millerr/testing_eclipse_hubs_6.txt")
 
-    val authsSorted = authsSortedDf.rdd
-
-    val hubsSorted = authsSortedDf
-      .sort($"HubScore".desc)
-      .limit(50)
-      .rdd
-
-    authsSorted.saveAsTextFile("hdfs://richmond:32251/user/millerr/testing_eclipse_auths_3.txt")
-    hubsSorted.saveAsTextFile("hdfs://richmond:32251/user/millerr/testing_eclipse_hubs_3.txt")
-
-    spark.stop()
   }
 }
